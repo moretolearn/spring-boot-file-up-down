@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.moretolearn.model.DocDetails;
 import com.moretolearn.model.DocResponse;
 import com.moretolearn.service.DocDetailsService;
@@ -31,6 +32,28 @@ public class DocDetailsRestController {
 
 	@Autowired
 	DocDetailsService docDetailsService;
+
+	// S3
+	@PostMapping("/uploadFileS3")
+	public DocResponse uploadFileS3(@RequestParam("file") MultipartFile file) throws IOException {
+		DocDetails docDetails = null;
+		if (file.isEmpty()) {
+		} else {
+			docDetails = docDetailsService.uploadFileS3(file);
+		}
+		String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath().path("/downloadFileS3/")
+				.path(docDetails.getDocId()).toUriString();
+		return new DocResponse(file.getOriginalFilename(), fileDownloadUri, file.getContentType(), file.getSize());
+	}
+
+	@GetMapping("/downloadFileS3/{docId}")
+	public ResponseEntity<byte[]> downloadFileS3(@PathVariable String docId) throws IOException {
+		DocDetails docDetails = docDetailsService.downloadFileDB(docId);
+		S3ObjectInputStream inputStream = docDetailsService.downloadFileS3(docDetails.getPath());
+		return ResponseEntity.ok().contentType(MediaType.parseMediaType(docDetails.getDocType()))
+				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docDetails.getDocName() + "\"")
+				.body(inputStream.readAllBytes());
+	}
 
 	// DB
 	@PostMapping("/uploadFileDB")
@@ -65,17 +88,14 @@ public class DocDetailsRestController {
 		}).collect(Collectors.toList());
 	}
 
-	// Filesystem	
+	// Filesystem
 	@PostMapping("/uploadFileFS")
-    public DocResponse uploadFile(@RequestParam("file") MultipartFile file) {
-        DocDetails docDetails = docDetailsService.uploadFileFS(file);
-        String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
-            .path("/downloadFileFS/")
-            .path(docDetails.getDocId())
-            .toUriString();
-        return new DocResponse(file.getOriginalFilename(), fileDownloadUri,
-            file.getContentType(), file.getSize());
-    }
+	public DocResponse uploadFile(@RequestParam("file") MultipartFile file) {
+		DocDetails docDetails = docDetailsService.uploadFileFS(file);
+		String fileDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath().path("/downloadFileFS/")
+				.path(docDetails.getDocId()).toUriString();
+		return new DocResponse(file.getOriginalFilename(), fileDownloadUri, file.getContentType(), file.getSize());
+	}
 
 	@GetMapping("/downloadFileFS/{docId}")
 	public ResponseEntity<Resource> downloadFile(@PathVariable String fileName, HttpServletRequest request) {

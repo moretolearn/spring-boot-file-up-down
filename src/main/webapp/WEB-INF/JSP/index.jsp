@@ -12,7 +12,7 @@
 <div class="container col-lg-12" >
 
      <div class="col-lg-12">
-     <form action = "uploadFileDB" method = "post" enctype="multipart/form-data">
+     <form action = "uploadFileS3" method = "post" enctype="multipart/form-data">
      
      	<h4>Upload File Here</h4>
             <div class="form-group form-group-lg">
